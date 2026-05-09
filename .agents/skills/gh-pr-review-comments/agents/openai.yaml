@@ -1,0 +1,4 @@
+interface:
+  display_name: "PR Review Comments"
+  short_description: "Review PRs and post concise inline comments"
+  default_prompt: "Use $gh-pr-review-comments to review this PR and post concise inline comments on the exact changed lines."

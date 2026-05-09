@@ -1,0 +1,15 @@
+[project]
+name = "receipt-line-agent"
+version = "0.1.0"
+description = "AgentCore runtime for reading receipt images and appending monthly Google Sheets rows."
+requires-python = ">=3.12"
+dependencies = [
+  "bedrock-agentcore>=0.1.0",
+  "boto3>=1.42.0",
+  "google-api-python-client>=2.187.0",
+  "google-cloud-vision>=3.10.0",
+  "google-auth>=2.43.0",
+]
+
+[tool.uv]
+package = false

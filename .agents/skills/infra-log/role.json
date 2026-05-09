@@ -1,0 +1,254 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CloudWatchLogsReadOnlyForInvestigation",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams",
+        "logs:FilterLogEvents",
+        "logs:GetLogEvents",
+        "logs:StartQuery",
+        "logs:GetQueryResults",
+        "logs:StopQuery",
+        "logs:DescribeQueries",
+        "logs:GetLogGroupFields",
+        "logs:GetLogRecord",
+        "logs:TestMetricFilter",
+        "logs:ListTagsForResource"
+      ],
+      "Resource": [
+        "arn:aws:logs:ap-northeast-1:<account_id>:log-group:*",
+        "arn:aws:logs:ap-northeast-1:<account_id>:log-group:*:*"
+      ]
+    },
+    {
+      "Sid": "CloudWatchLogsListReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeAccountPolicies",
+        "logs:DescribeDestinations",
+        "logs:DescribeExportTasks",
+        "logs:DescribeMetricFilters",
+        "logs:DescribeQueryDefinitions",
+        "logs:DescribeResourcePolicies",
+        "logs:DescribeSubscriptionFilters",
+        "logs:ListLogGroups",
+        "logs:ListLogDeliveries",
+        "logs:GetLogDelivery",
+        "logs:ListAnomalies",
+        "logs:ListLogAnomalyDetectors"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CloudWatchMetricsAndDashboardsReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "cloudwatch:GetMetricData",
+        "cloudwatch:GetMetricStatistics",
+        "cloudwatch:GetMetricWidgetImage",
+        "cloudwatch:ListMetrics",
+        "cloudwatch:DescribeAlarms",
+        "cloudwatch:DescribeAlarmHistory",
+        "cloudwatch:GetDashboard",
+        "cloudwatch:ListDashboards"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CloudWatchApplicationSignalsReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "application-signals:ListServices",
+        "application-signals:GetService",
+        "application-signals:ListServiceOperations",
+        "application-signals:GetServiceLevelObjective",
+        "application-signals:ListServiceLevelObjectives",
+        "application-signals:BatchGetServiceLevelIndicatorReport",
+        "application-signals:GetServiceLevelObjective"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "XRayReadOnlyForTraceInvestigation",
+      "Effect": "Allow",
+      "Action": [
+        "xray:GetTraceSummaries",
+        "xray:BatchGetTraces",
+        "xray:GetTraceGraph",
+        "xray:GetServiceGraph",
+        "xray:GetGroups",
+        "xray:GetGroup",
+        "xray:GetTimeSeriesServiceStatistics",
+        "xray:GetInsight",
+        "xray:GetInsightEvents",
+        "xray:GetInsightSummaries",
+        "xray:BatchGetTraceSummaryById"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CloudTrailLookupReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "cloudtrail:LookupEvents",
+        "cloudtrail:DescribeTrails",
+        "cloudtrail:GetTrailStatus",
+        "cloudtrail:ListTrails",
+        "cloudtrail:GetEventSelectors",
+        "cloudtrail:GetInsightSelectors"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "BedrockReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:Get*",
+        "bedrock:List*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "BedrockAgentCoreReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:Get*",
+        "bedrock-agentcore:List*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "LambdaMetadataReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "lambda:GetPolicy",
+        "lambda:ListFunctions",
+        "lambda:ListVersionsByFunction",
+        "lambda:ListAliases",
+        "lambda:ListTags",
+        "lambda:ListEventSourceMappings"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EcsMetadataReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:DescribeClusters",
+        "ecs:ListClusters",
+        "ecs:DescribeServices",
+        "ecs:ListServices",
+        "ecs:DescribeTasks",
+        "ecs:ListTasks",
+        "ecs:DescribeTaskDefinition",
+        "ecs:ListTaskDefinitions",
+        "ecs:DescribeContainerInstances",
+        "ecs:ListContainerInstances",
+        "ecs:DescribeCapacityProviders",
+        "ecs:ListTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Ec2MetadataReadOnlyForEcsAndNetworking",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeRouteTables",
+        "ec2:DescribeNatGateways",
+        "ec2:DescribeAddresses",
+        "ec2:DescribeAvailabilityZones"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AlbMetadataReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:DescribeLoadBalancers",
+        "elasticloadbalancing:DescribeListeners",
+        "elasticloadbalancing:DescribeRules",
+        "elasticloadbalancing:DescribeTargetGroups",
+        "elasticloadbalancing:DescribeTargetHealth",
+        "elasticloadbalancing:DescribeTags",
+        "elasticloadbalancing:DescribeLoadBalancerAttributes",
+        "elasticloadbalancing:DescribeTargetGroupAttributes"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CloudFrontMetadataReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:GetDistribution",
+        "cloudfront:GetDistributionConfig",
+        "cloudfront:ListDistributions",
+        "cloudfront:ListTagsForResource",
+        "cloudfront:GetCachePolicy",
+        "cloudfront:GetOriginRequestPolicy",
+        "cloudfront:GetResponseHeadersPolicy",
+        "cloudfront:ListCachePolicies",
+        "cloudfront:ListOriginRequestPolicies",
+        "cloudfront:ListResponseHeadersPolicies"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "WafMetadataReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "wafv2:GetWebACL",
+        "wafv2:ListWebACLs",
+        "wafv2:GetLoggingConfiguration",
+        "wafv2:ListLoggingConfigurations",
+        "wafv2:GetSampledRequests",
+        "wafv2:GetRuleGroup",
+        "wafv2:ListRuleGroups",
+        "wafv2:ListResourcesForWebACL",
+        "wafv2:ListTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ApiGatewayMetadataReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "apigateway:GET"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "S3ReadOnlyForLogBucketsOptional",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListAllMyBuckets",
+        "s3:GetBucketLocation",
+        "s3:GetBucketPolicy",
+        "s3:GetBucketLogging",
+        "s3:GetBucketNotification",
+        "s3:GetBucketTagging",
+        "s3:GetBucketVersioning",
+        "s3:ListBucket",
+        "s3:GetObject"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "StsCallerIdentity",
+      "Effect": "Allow",
+      "Action": [
+        "sts:GetCallerIdentity"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

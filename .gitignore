@@ -1,0 +1,12 @@
+agentcore-sample
+
+node_modules/
+cdk.out/
+dist/
+coverage/
+infra/.env
+
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/

@@ -1,0 +1,42 @@
+{
+  "name": "receipt-line-agent-infra",
+  "version": "0.1.0",
+  "private": true,
+  "bin": {
+    "receipt-line-agent": "bin/receipt-line-agent.js"
+  },
+  "scripts": {
+    "preinstall": "node scripts/check-node-version.js",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "synth": "cdk synth"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@aws-cdk/aws-bedrock-agentcore-alpha": "2.243.0-alpha.0",
+    "@aws-sdk/client-bedrock-agentcore": "^3.883.0",
+    "@aws-sdk/client-dynamodb": "^3.883.0",
+    "@aws-sdk/client-s3": "^3.883.0",
+    "@aws-sdk/client-secrets-manager": "^3.883.0",
+    "@aws-sdk/client-sqs": "^3.883.0",
+    "@aws-sdk/lib-dynamodb": "^3.883.0",
+    "aws-cdk-lib": "2.243.0",
+    "constructs": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.147",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.7.9",
+    "cdk": "^2.1029.0",
+    "esbuild": "^0.24.2",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.6.3"
+  }
+}
