@@ -7,6 +7,9 @@
 - 取り消しや記録の残し方などをエージェントに判断させながら、LINEで簡単に登録したい
 - エージェントを育てていきたい
 
-<img width="1179" height="2379" alt="IMG_8615" src="https://github.com/user-attachments/assets/94656350-82dc-40d5-bcb9-b5569ce0ef59" />
+#### LINEでやりとり
+<img width="590" height="1190" alt="IMG_8615" src="https://github.com/user-attachments/assets/94656350-82dc-40d5-bcb9-b5569ce0ef59" />
+
+#### 結果はスプレットシートに登録
 <img width="963" height="258" alt="スクリーンショット 2026-05-11 23 56 27" src="https://github.com/user-attachments/assets/3ba9ff6e-8de2-46f9-9cad-d2c80ee9c443" />
 
