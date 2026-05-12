@@ -20,7 +20,13 @@ def process_receipt(payload: dict) -> dict:
 
     try:
         ocr_text = extract_text(request.bucket, request.key)
-        receipt = normalize_receipt(ocr_text, request.image_s3_uri, request.line_message_id)
+        receipt = normalize_receipt(
+            ocr_text,
+            request.image_s3_uri,
+            request.line_user_id,
+            request.line_display_name,
+            request.line_message_id,
+        )
 
         if not receipt.has_required_fields():
             return {
@@ -55,6 +61,7 @@ def process_receipt(payload: dict) -> dict:
 def _parse_request(payload: dict) -> ReceiptRequest:
     return ReceiptRequest(
         line_user_id=str(payload["lineUserId"]),
+        line_display_name=str(payload.get("lineDisplayName") or ""),
         line_message_id=str(payload["lineMessageId"]),
         bucket=str(payload["bucket"]),
         key=str(payload["key"]),
@@ -76,6 +83,8 @@ def _success_message(receipt: NormalizedReceipt, already_registered: bool = Fals
 
 def _receipt_to_response(receipt: NormalizedReceipt) -> dict:
     return {
+        "lineUserId": receipt.line_user_id,
+        "lineDisplayName": receipt.line_display_name,
         "lineMessageId": receipt.line_message_id,
         "receiptDate": receipt.receipt_date,
         "store": receipt.store,

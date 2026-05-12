@@ -8,8 +8,18 @@ from .config import SheetsError
 from .google_secret import SHEETS_SCOPES, get_google_secret, service_account_credentials, spreadsheet_id
 from .types import NormalizedReceipt
 
-HEADERS = ["登録日時", "レシート日付", "店舗名", "カテゴリ", "合計金額", "画像S3 URI", "LINEメッセージID"]
-LINE_MESSAGE_ID_COLUMN = "G"
+HEADERS = [
+    "登録日時",
+    "レシート日付",
+    "LINE表示名",
+    "LINEユーザーID",
+    "店舗名",
+    "カテゴリ",
+    "合計金額",
+    "画像S3 URI",
+    "LINEメッセージID",
+]
+LINE_MESSAGE_ID_COLUMN = "I"
 FORMULA_PREFIXES = ("=", "+", "-", "@")
 
 
@@ -33,6 +43,8 @@ def append_receipt(receipt: NormalizedReceipt, registered_at: datetime) -> dict:
         row = [
             _safe_sheet_text(registered_at.isoformat()),
             _safe_sheet_text(receipt.receipt_date or ""),
+            _safe_sheet_text(receipt.line_display_name),
+            _safe_sheet_text(receipt.line_user_id),
             _safe_sheet_text(receipt.store or ""),
             _safe_sheet_text(receipt.category),
             receipt.total,
@@ -122,20 +134,40 @@ def _find_existing_receipt(service, spreadsheet_id: str, line_message_id: str) -
         if not sheet_name:
             continue
 
-        result = (
-            service.spreadsheets()
-            .values()
-            .get(
-                spreadsheetId=spreadsheet_id,
-                range=f"'{sheet_name}'!{LINE_MESSAGE_ID_COLUMN}:{LINE_MESSAGE_ID_COLUMN}",
-            )
-            .execute()
+        existing_receipt = _find_existing_receipt_in_column(
+            service,
+            spreadsheet_id,
+            sheet_name,
+            LINE_MESSAGE_ID_COLUMN,
+            line_message_id,
         )
-        values = result.get("values", [])
-        for index, row in enumerate(values, start=1):
-            if row and str(row[0]).strip() == line_message_id:
-                return {
-                    "sheetName": sheet_name,
-                    "updatedRange": f"'{sheet_name}'!A{index}:{LINE_MESSAGE_ID_COLUMN}{index}",
-                }
+        if existing_receipt:
+            return existing_receipt
+
+    return None
+
+
+def _find_existing_receipt_in_column(
+    service,
+    spreadsheet_id: str,
+    sheet_name: str,
+    column: str,
+    line_message_id: str,
+) -> dict | None:
+    result = (
+        service.spreadsheets()
+        .values()
+        .get(
+            spreadsheetId=spreadsheet_id,
+            range=f"'{sheet_name}'!{column}:{column}",
+        )
+        .execute()
+    )
+    values = result.get("values", [])
+    for index, row in enumerate(values, start=1):
+        if row and str(row[0]).strip() == line_message_id:
+            return {
+                "sheetName": sheet_name,
+                "updatedRange": f"'{sheet_name}'!A{index}:{LINE_MESSAGE_ID_COLUMN}{index}",
+            }
     return None

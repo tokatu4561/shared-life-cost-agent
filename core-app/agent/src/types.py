@@ -9,6 +9,7 @@ ReceiptCategory = Literal["食費", "日用品", "その他"]
 @dataclass(frozen=True)
 class ReceiptRequest:
     line_user_id: str
+    line_display_name: str
     line_message_id: str
     bucket: str
     key: str
@@ -17,6 +18,8 @@ class ReceiptRequest:
 
 @dataclass(frozen=True)
 class NormalizedReceipt:
+    line_user_id: str
+    line_display_name: str
     line_message_id: str
     receipt_date: str | None
     store: str | None

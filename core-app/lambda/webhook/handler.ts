@@ -61,7 +61,8 @@ async function handleLineEvent(lineEvent: LineWebhookEvent, lineClient: LineClie
   }
 
   const createdAt = new Date().toISOString()
-  const wasCreated = await createReceiptEvent(lineMessageId, lineUserId, createdAt)
+  const lineDisplayName = await getLineDisplayName(lineClient, lineUserId, lineMessageId)
+  const wasCreated = await createReceiptEvent(lineMessageId, lineUserId, lineDisplayName, createdAt)
   if (!wasCreated) {
     await lineClient.replyText(lineEvent.replyToken, 'このレシートはすでに受け付けています。読み取り結果をお待ちください。')
     return
@@ -83,6 +84,7 @@ async function handleLineEvent(lineEvent: LineWebhookEvent, lineClient: LineClie
 
     const message: ReceiptProcessingMessage = {
       lineUserId,
+      lineDisplayName,
       lineMessageId,
       bucket: receiptImageBucket,
       key,
@@ -115,7 +117,30 @@ async function handleLineEvent(lineEvent: LineWebhookEvent, lineClient: LineClie
   }
 }
 
-async function createReceiptEvent(lineMessageId: string, lineUserId: string, createdAt: string): Promise<boolean> {
+async function getLineDisplayName(
+  lineClient: LineClient,
+  lineUserId: string,
+  lineMessageId: string,
+): Promise<string> {
+  try {
+    const profile = await lineClient.getProfile(lineUserId)
+    return profile.displayName
+  } catch (error) {
+    logger.warn('Failed to fetch LINE profile; continuing without display name', {
+      lineMessageId,
+      lineUserId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return ''
+  }
+}
+
+async function createReceiptEvent(
+  lineMessageId: string,
+  lineUserId: string,
+  lineDisplayName: string,
+  createdAt: string,
+): Promise<boolean> {
   try {
     await dynamoClient.send(
       new PutCommand({
@@ -123,6 +148,7 @@ async function createReceiptEvent(lineMessageId: string, lineUserId: string, cre
         Item: {
           lineMessageId,
           lineUserId,
+          lineDisplayName,
           status: 'RECEIVED',
           createdAt,
           updatedAt: createdAt,
