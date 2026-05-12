@@ -45,7 +45,7 @@ describe('ReceiptLineAgentStack', () => {
     })
   })
 
-  test('creates private receipt bucket with 90 day expiration', () => {
+  test('creates public-readable receipt bucket with 90 day expiration', () => {
     const template = synthTemplate()
     template.hasResourceProperties('AWS::S3::Bucket', {
       LifecycleConfiguration: {
@@ -58,10 +58,34 @@ describe('ReceiptLineAgentStack', () => {
       },
       PublicAccessBlockConfiguration: {
         BlockPublicAcls: true,
-        BlockPublicPolicy: true,
+        BlockPublicPolicy: false,
         IgnorePublicAcls: true,
-        RestrictPublicBuckets: true,
+        RestrictPublicBuckets: false,
       },
+    })
+    template.hasResourceProperties('AWS::S3::BucketPolicy', {
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Sid: 'AllowPublicReadReceiptImages',
+            Action: 's3:GetObject',
+            Effect: 'Allow',
+            Principal: {
+              AWS: '*',
+            },
+            Resource: {
+              'Fn::Join': Match.arrayWith([
+                Match.arrayWith([
+                  Match.objectLike({
+                    'Fn::GetAtt': [Match.stringLikeRegexp('ReceiptImagesBucket'), 'Arn'],
+                  }),
+                  '/receipts/*',
+                ]),
+              ]),
+            },
+          }),
+        ]),
+      }),
     })
   })
 
@@ -191,7 +215,7 @@ describe('ReceiptLineAgentStack', () => {
                   [
                     'arn:',
                     { Ref: 'AWS::Partition' },
-                    ':secretsmanager:ap-northeast-1:123456789012:secret:existing/google-*',
+                    ':secretsmanager:ap-northeast-1:123456789012:secret:existing/google',
                   ],
                 ],
               },

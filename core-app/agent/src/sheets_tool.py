@@ -16,7 +16,7 @@ HEADERS = [
     "店舗名",
     "カテゴリ",
     "合計金額",
-    "画像S3 URI",
+    "画像URL",
     "LINEメッセージID",
 ]
 LINE_MESSAGE_ID_COLUMN = "I"
@@ -48,7 +48,7 @@ def append_receipt(receipt: NormalizedReceipt, registered_at: datetime) -> dict:
             _safe_sheet_text(receipt.store or ""),
             _safe_sheet_text(receipt.category),
             receipt.total,
-            _safe_sheet_text(receipt.image_s3_uri),
+            _safe_sheet_text(receipt.image_url),
             _safe_sheet_text(receipt.line_message_id),
         ]
         result = (

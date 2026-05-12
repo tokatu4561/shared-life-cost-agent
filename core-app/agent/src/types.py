@@ -13,7 +13,7 @@ class ReceiptRequest:
     line_message_id: str
     bucket: str
     key: str
-    image_s3_uri: str
+    image_url: str
 
 
 @dataclass(frozen=True)
@@ -25,7 +25,7 @@ class NormalizedReceipt:
     store: str | None
     category: ReceiptCategory
     total: int | None
-    image_s3_uri: str
+    image_url: str
 
     def has_required_fields(self) -> bool:
         return bool(self.store) and self.total is not None
