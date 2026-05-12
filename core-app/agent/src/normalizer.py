@@ -58,7 +58,7 @@ def normalize_receipt(
         line_user_id=line_user_id,
         line_display_name=line_display_name,
         line_message_id=line_message_id,
-        receipt_date=_nullable_string(parsed.get("receiptDate")),
+        receipt_date=_normalize_receipt_date(parsed.get("receiptDate")),
         store=_nullable_string(parsed.get("store")),
         category=category,  # type: ignore[arg-type]
         total=_nullable_int(parsed.get("total")),
@@ -104,6 +104,17 @@ def _nullable_string(value: object) -> str | None:
     if not text or text.lower() == "null" or text == "不明":
         return None
     return text
+
+
+def _normalize_receipt_date(value: object) -> str | None:
+    text = _nullable_string(value)
+    if text is None:
+        return None
+
+    text = text.removeprefix("'")
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+        return text
+    return None
 
 
 def _nullable_int(value: object) -> int | None:
