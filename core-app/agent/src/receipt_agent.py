@@ -22,7 +22,7 @@ def process_receipt(payload: dict) -> dict:
         ocr_text = extract_text(request.bucket, request.key)
         receipt = normalize_receipt(
             ocr_text,
-            request.image_s3_uri,
+            request.image_url,
             request.line_user_id,
             request.line_display_name,
             request.line_message_id,
@@ -65,7 +65,7 @@ def _parse_request(payload: dict) -> ReceiptRequest:
         line_message_id=str(payload["lineMessageId"]),
         bucket=str(payload["bucket"]),
         key=str(payload["key"]),
-        image_s3_uri=str(payload["imageS3Uri"]),
+        image_url=str(payload.get("imageUrl") or payload["imageS3Uri"]),
     )
 
 
@@ -90,7 +90,7 @@ def _receipt_to_response(receipt: NormalizedReceipt) -> dict:
         "store": receipt.store,
         "category": receipt.category,
         "total": receipt.total,
-        "imageS3Uri": receipt.image_s3_uri,
+        "imageUrl": receipt.image_url,
     }
 
 

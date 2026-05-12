@@ -18,6 +18,7 @@ const receiptImageBucket = requiredEnv('RECEIPT_IMAGE_BUCKET')
 const receiptEventsTable = requiredEnv('RECEIPT_EVENTS_TABLE')
 const processingQueueUrl = requiredEnv('RECEIPT_PROCESSING_QUEUE_URL')
 const lineSecretArn = requiredEnv('LINE_SECRET_ARN')
+const awsRegion = process.env.AWS_REGION ?? 'ap-northeast-1'
 
 let cachedLineSecret: LineSecret | undefined
 
@@ -71,7 +72,7 @@ async function handleLineEvent(lineEvent: LineWebhookEvent, lineClient: LineClie
   try {
     const imageBytes = await lineClient.getMessageContent(lineMessageId)
     const key = `receipts/${lineUserId}/${lineMessageId}.jpg`
-    const imageS3Uri = `s3://${receiptImageBucket}/${key}`
+    const imageUrl = publicS3ObjectUrl(receiptImageBucket, key)
 
     await s3Client.send(
       new PutObjectCommand({
@@ -88,7 +89,7 @@ async function handleLineEvent(lineEvent: LineWebhookEvent, lineClient: LineClie
       lineMessageId,
       bucket: receiptImageBucket,
       key,
-      imageS3Uri,
+      imageUrl,
     }
     await sqsClient.send(
       new SendMessageCommand({
@@ -99,7 +100,7 @@ async function handleLineEvent(lineEvent: LineWebhookEvent, lineClient: LineClie
 
     await updateReceiptEvent(lineMessageId, {
       status: 'QUEUED',
-      imageS3Uri,
+      imageUrl,
       updatedAt: new Date().toISOString(),
     })
     await lineClient.replyText(lineEvent.replyToken, '受け付けました。読み取り後に結果を送ります。')
@@ -115,6 +116,11 @@ async function handleLineEvent(lineEvent: LineWebhookEvent, lineClient: LineClie
     })
     await lineClient.replyText(lineEvent.replyToken, '画像の受け付けに失敗しました。時間をおいてもう一度送ってください。')
   }
+}
+
+function publicS3ObjectUrl(bucket: string, key: string): string {
+  const encodedKey = key.split('/').map(encodeURIComponent).join('/')
+  return `https://${bucket}.s3.${awsRegion}.amazonaws.com/${encodedKey}`
 }
 
 async function getLineDisplayName(

@@ -16,7 +16,7 @@ HAIKU_45_MODEL_ID = "anthropic.claude-haiku-4-5-20251001-v1:0"
 
 def normalize_receipt(
     ocr_text: str,
-    image_s3_uri: str,
+    image_url: str,
     line_user_id: str,
     line_display_name: str,
     line_message_id: str,
@@ -62,7 +62,7 @@ def normalize_receipt(
         store=_nullable_string(parsed.get("store")),
         category=category,  # type: ignore[arg-type]
         total=_nullable_int(parsed.get("total")),
-        image_s3_uri=image_s3_uri,
+        image_url=image_url,
     )
 
 

@@ -6,7 +6,7 @@ export interface ReceiptProcessingMessage {
   lineMessageId: string
   bucket: string
   key: string
-  imageS3Uri: string
+  imageUrl: string
 }
 
 export interface AgentReceipt {
@@ -17,7 +17,7 @@ export interface AgentReceipt {
   store: string | null
   category: ReceiptCategory
   total: number | null
-  imageS3Uri: string
+  imageUrl: string
 }
 
 export interface AgentReceiptResult {

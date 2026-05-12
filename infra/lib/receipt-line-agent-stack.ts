@@ -46,7 +46,12 @@ export class ReceiptLineAgentStack extends cdk.Stack {
     )
 
     const receiptImagesBucket = new s3.Bucket(this, 'ReceiptImagesBucket', {
-      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      blockPublicAccess: new s3.BlockPublicAccess({
+        blockPublicAcls: true,
+        blockPublicPolicy: false,
+        ignorePublicAcls: true,
+        restrictPublicBuckets: false,
+      }),
       encryption: s3.BucketEncryption.S3_MANAGED,
       enforceSSL: true,
       lifecycleRules: [
@@ -57,6 +62,14 @@ export class ReceiptLineAgentStack extends cdk.Stack {
       ],
       removalPolicy: RemovalPolicy.RETAIN,
     })
+    receiptImagesBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        sid: 'AllowPublicReadReceiptImages',
+        actions: ['s3:GetObject'],
+        principals: [new iam.AnyPrincipal()],
+        resources: [receiptImagesBucket.arnForObjects('receipts/*')],
+      }),
+    )
 
     const receiptEventsTable = new dynamodb.Table(this, 'ReceiptEventsTable', {
       tableName: `${resourcePrefix}-events`,

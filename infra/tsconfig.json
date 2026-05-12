@@ -18,6 +18,10 @@
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
     "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@aws-sdk/*": ["node_modules/@aws-sdk/*"]
+    },
     "typeRoots": ["./node_modules/@types"]
   },
   "include": ["bin/**/*.ts", "lib/**/*.ts", "test/**/*.ts", "../core-app/lambda/**/*.ts"],
