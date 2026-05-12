@@ -63,6 +63,8 @@ async function handleAgentResult(
     errorMessage: result.errorDetail,
     updatedAt: new Date().toISOString(),
     receiptDate: result.receipt?.receiptDate ?? undefined,
+    lineUserIdFromAgent: result.receipt?.lineUserId,
+    lineDisplayNameFromAgent: result.receipt?.lineDisplayName,
     lineMessageIdFromAgent: result.receipt?.lineMessageId,
     store: result.receipt?.store ?? undefined,
     category: result.receipt?.category,

@@ -2,6 +2,7 @@ export type ReceiptCategory = '食費' | '日用品' | 'その他'
 
 export interface ReceiptProcessingMessage {
   lineUserId: string
+  lineDisplayName: string
   lineMessageId: string
   bucket: string
   key: string
@@ -9,6 +10,8 @@ export interface ReceiptProcessingMessage {
 }
 
 export interface AgentReceipt {
+  lineUserId: string
+  lineDisplayName: string
   lineMessageId: string
   receiptDate: string | null
   store: string | null

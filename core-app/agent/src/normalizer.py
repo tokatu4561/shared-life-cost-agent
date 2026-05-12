@@ -14,7 +14,13 @@ DEFAULT_MODEL_ID = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 HAIKU_45_MODEL_ID = "anthropic.claude-haiku-4-5-20251001-v1:0"
 
 
-def normalize_receipt(ocr_text: str, image_s3_uri: str, line_message_id: str) -> NormalizedReceipt:
+def normalize_receipt(
+    ocr_text: str,
+    image_s3_uri: str,
+    line_user_id: str,
+    line_display_name: str,
+    line_message_id: str,
+) -> NormalizedReceipt:
     region = aws_region()
     bedrock_runtime = boto3.client(
         "bedrock-runtime",
@@ -49,6 +55,8 @@ def normalize_receipt(ocr_text: str, image_s3_uri: str, line_message_id: str) ->
         category = "その他"
 
     return NormalizedReceipt(
+        line_user_id=line_user_id,
+        line_display_name=line_display_name,
         line_message_id=line_message_id,
         receipt_date=_nullable_string(parsed.get("receiptDate")),
         store=_nullable_string(parsed.get("store")),
