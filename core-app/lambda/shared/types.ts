@@ -4,6 +4,8 @@ export interface ReceiptProcessingMessage {
   lineUserId: string
   lineDisplayName: string
   lineMessageId: string
+  lineReplyToId: string
+  lineReplySourceType: string
   bucket: string
   key: string
   imageUrl: string
@@ -44,6 +46,8 @@ export interface LineWebhookEvent {
   source?: {
     type: string
     userId?: string
+    groupId?: string
+    roomId?: string
   }
   message?: {
     id: string

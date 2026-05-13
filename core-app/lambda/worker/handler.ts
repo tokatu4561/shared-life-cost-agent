@@ -2,6 +2,7 @@ import type { SQSHandler } from 'aws-lambda'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { requiredEnv } from '../shared/env'
+import { receiptPushTargetId } from '../shared/lineReplyTarget'
 import { logger } from '../shared/logger'
 import { getJsonSecret, requireSecretValue, type LineSecret } from '../shared/secrets'
 import type { AgentReceiptResult, ReceiptProcessingMessage } from '../shared/types'
@@ -77,7 +78,7 @@ async function handleAgentResult(
 
   await updateReceiptEvent(message.lineMessageId, updateValues)
   try {
-    await lineClient.pushText(message.lineUserId, result.replyMessage)
+    await lineClient.pushText(receiptPushTargetId(message), result.replyMessage)
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     logger.error('Failed to push LINE result message', {

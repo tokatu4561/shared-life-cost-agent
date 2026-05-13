@@ -4,6 +4,7 @@ import { SendMessageCommand, SQSClient } from '@aws-sdk/client-sqs'
 import { DynamoDBDocumentClient, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { requiredEnv } from '../shared/env'
+import { resolveLineReplyTarget } from '../shared/lineReplyTarget'
 import { logger } from '../shared/logger'
 import { getJsonSecret, requireSecretValue, type LineSecret } from '../shared/secrets'
 import type { LineWebhookBody, LineWebhookEvent, ReceiptProcessingMessage } from '../shared/types'
@@ -55,15 +56,16 @@ async function handleLineEvent(lineEvent: LineWebhookEvent, lineClient: LineClie
   }
 
   const lineUserId = lineEvent.source?.userId
+  const lineReplyTarget = resolveLineReplyTarget(lineEvent.source)
   const lineMessageId = lineEvent.message.id
-  if (!lineUserId) {
+  if (!lineUserId || !lineReplyTarget) {
     await lineClient.replyText(lineEvent.replyToken, 'ユーザー情報を確認できませんでした。もう一度送ってください。')
     return
   }
 
   const createdAt = new Date().toISOString()
   const lineDisplayName = await getLineDisplayName(lineClient, lineUserId, lineMessageId)
-  const wasCreated = await createReceiptEvent(lineMessageId, lineUserId, lineDisplayName, createdAt)
+  const wasCreated = await createReceiptEvent(lineMessageId, lineUserId, lineDisplayName, lineReplyTarget, createdAt)
   if (!wasCreated) {
     await lineClient.replyText(lineEvent.replyToken, 'このレシートはすでに受け付けています。読み取り結果をお待ちください。')
     return
@@ -87,6 +89,8 @@ async function handleLineEvent(lineEvent: LineWebhookEvent, lineClient: LineClie
       lineUserId,
       lineDisplayName,
       lineMessageId,
+      lineReplyToId: lineReplyTarget.lineReplyToId,
+      lineReplySourceType: lineReplyTarget.lineReplySourceType,
       bucket: receiptImageBucket,
       key,
       imageUrl,
@@ -145,6 +149,7 @@ async function createReceiptEvent(
   lineMessageId: string,
   lineUserId: string,
   lineDisplayName: string,
+  lineReplyTarget: { lineReplyToId: string; lineReplySourceType: string },
   createdAt: string,
 ): Promise<boolean> {
   try {
@@ -155,6 +160,8 @@ async function createReceiptEvent(
           lineMessageId,
           lineUserId,
           lineDisplayName,
+          lineReplyToId: lineReplyTarget.lineReplyToId,
+          lineReplySourceType: lineReplyTarget.lineReplySourceType,
           status: 'RECEIVED',
           createdAt,
           updatedAt: createdAt,
