@@ -12,5 +12,6 @@
 <img width="390" height="790" alt="IMG_8625" src="https://github.com/user-attachments/assets/aeafb91d-be38-4371-9055-caf5c520425a" />
 
 #### 結果はスプレットシートに登録
-<img width="963" height="258" alt="スクリーンショット 2026-05-11 23 56 27" src="https://github.com/user-attachments/assets/3ba9ff6e-8de2-46f9-9cad-d2c80ee9c443" />
+<img width="1082" height="255" alt="スクリーンショット 2026-05-14 21 43 31" src="https://github.com/user-attachments/assets/2d9ed4b1-5947-4a49-8541-33357dcbf1e4" />
+
 
