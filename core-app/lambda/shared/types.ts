@@ -1,6 +1,8 @@
 export type ReceiptCategory = '食費' | '日用品' | 'その他'
+export type AgentTask = 'receipt' | 'expense_query'
 
 export interface ReceiptProcessingMessage {
+  task?: 'receipt'
   lineUserId: string
   lineDisplayName: string
   lineMessageId: string
@@ -9,6 +11,14 @@ export interface ReceiptProcessingMessage {
   bucket: string
   key: string
   imageUrl: string
+}
+
+export interface ExpenseQueryMessage {
+  task: 'expense_query'
+  lineUserId: string
+  lineDisplayName: string
+  lineMessageId: string
+  text: string
 }
 
 export interface AgentReceipt {
@@ -36,6 +46,17 @@ export interface AgentReceiptResult {
   }
 }
 
+export interface AgentExpenseQueryResult {
+  success: boolean
+  status: 'answered' | 'unsupported' | 'failed'
+  reason?: 'unsupported_query' | 'configuration_error' | 'sheets_error' | 'classification_error' | 'failed'
+  replyMessage: string
+  errorDetail?: string
+}
+
+export type AgentCoreMessage = ReceiptProcessingMessage | ExpenseQueryMessage
+export type AgentCoreResult = AgentReceiptResult | AgentExpenseQueryResult
+
 export interface LineWebhookBody {
   events?: LineWebhookEvent[]
 }
@@ -52,5 +73,6 @@ export interface LineWebhookEvent {
   message?: {
     id: string
     type: string
+    text?: string
   }
 }

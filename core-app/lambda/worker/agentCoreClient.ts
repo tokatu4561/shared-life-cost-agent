@@ -1,6 +1,13 @@
 import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/client-bedrock-agentcore'
 import { randomUUID } from 'node:crypto'
-import type { AgentReceiptResult, ReceiptProcessingMessage } from '../shared/types'
+import type {
+  AgentCoreMessage,
+  AgentCoreResult,
+  AgentExpenseQueryResult,
+  AgentReceiptResult,
+  ExpenseQueryMessage,
+  ReceiptProcessingMessage,
+} from '../shared/types'
 
 export class AgentCoreClient {
   private readonly client = new BedrockAgentCoreClient({})
@@ -8,6 +15,14 @@ export class AgentCoreClient {
   constructor(private readonly agentRuntimeArn: string) {}
 
   async invokeReceiptAgent(message: ReceiptProcessingMessage): Promise<AgentReceiptResult> {
+    return (await this.invokeAgentCore({ ...message, task: 'receipt' })) as AgentReceiptResult
+  }
+
+  async invokeExpenseQueryAgent(message: ExpenseQueryMessage): Promise<AgentExpenseQueryResult> {
+    return (await this.invokeAgentCore(message)) as AgentExpenseQueryResult
+  }
+
+  private async invokeAgentCore(message: AgentCoreMessage): Promise<AgentCoreResult> {
     const response = await this.client.send(
       new InvokeAgentRuntimeCommand({
         agentRuntimeArn: this.agentRuntimeArn,
@@ -19,7 +34,7 @@ export class AgentCoreClient {
     )
 
     const responseText = await decodeResponsePayload(response.response)
-    return JSON.parse(responseText) as AgentReceiptResult
+    return JSON.parse(responseText) as AgentCoreResult
   }
 }
 

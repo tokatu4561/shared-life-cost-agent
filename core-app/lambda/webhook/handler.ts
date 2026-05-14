@@ -7,7 +7,8 @@ import { requiredEnv } from '../shared/env'
 import { resolveLineReplyTarget } from '../shared/lineReplyTarget'
 import { logger } from '../shared/logger'
 import { getJsonSecret, requireSecretValue, type LineSecret } from '../shared/secrets'
-import type { LineWebhookBody, LineWebhookEvent, ReceiptProcessingMessage } from '../shared/types'
+import type { ExpenseQueryMessage, LineWebhookBody, LineWebhookEvent, ReceiptProcessingMessage } from '../shared/types'
+import { AgentCoreClient } from '../worker/agentCoreClient'
 import { LineClient } from './lineClient'
 import { verifyLineSignature } from './signature'
 
@@ -19,8 +20,10 @@ const receiptImageBucket = requiredEnv('RECEIPT_IMAGE_BUCKET')
 const receiptEventsTable = requiredEnv('RECEIPT_EVENTS_TABLE')
 const processingQueueUrl = requiredEnv('RECEIPT_PROCESSING_QUEUE_URL')
 const lineSecretArn = requiredEnv('LINE_SECRET_ARN')
+const agentCoreRuntimeArn = requiredEnv('AGENT_CORE_RUNTIME_ARN')
 const awsRegion = process.env.AWS_REGION ?? 'ap-northeast-1'
 
+const agentCoreClient = new AgentCoreClient(agentCoreRuntimeArn)
 let cachedLineSecret: LineSecret | undefined
 
 export async function handler(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyStructuredResultV2> {
@@ -50,7 +53,7 @@ async function handleLineEvent(lineEvent: LineWebhookEvent, lineClient: LineClie
     return
   }
 
-  if (lineEvent.type !== 'message' || lineEvent.message?.type !== 'image') {
+  if (lineEvent.type !== 'message' || !lineEvent.message) {
     await lineClient.replyText(lineEvent.replyToken, 'レシート画像を送ってください。')
     return
   }
@@ -65,6 +68,25 @@ async function handleLineEvent(lineEvent: LineWebhookEvent, lineClient: LineClie
 
   const createdAt = new Date().toISOString()
   const lineDisplayName = await getLineDisplayName(lineClient, lineUserId, lineMessageId)
+
+  if (lineEvent.message.type === 'text') {
+    await handleTextMessage(
+      lineEvent,
+      lineClient,
+      lineUserId,
+      lineDisplayName,
+      lineMessageId,
+      lineReplyTarget.lineReplyToId,
+      lineReplyTarget.lineReplySourceType,
+    )
+    return
+  }
+
+  if (lineEvent.message.type !== 'image') {
+    await lineClient.replyText(lineEvent.replyToken, 'レシート画像、または今月の集計について質問してください。')
+    return
+  }
+
   const wasCreated = await createReceiptEvent(lineMessageId, lineUserId, lineDisplayName, lineReplyTarget, createdAt)
   if (!wasCreated) {
     await lineClient.replyText(lineEvent.replyToken, 'このレシートはすでに受け付けています。読み取り結果をお待ちください。')
@@ -120,6 +142,64 @@ async function handleLineEvent(lineEvent: LineWebhookEvent, lineClient: LineClie
     })
     await lineClient.replyText(lineEvent.replyToken, '画像の受け付けに失敗しました。時間をおいてもう一度送ってください。')
   }
+}
+
+async function handleTextMessage(
+  lineEvent: LineWebhookEvent,
+  lineClient: LineClient,
+  lineUserId: string,
+  lineDisplayName: string,
+  lineMessageId: string,
+  lineReplyToId: string,
+  lineReplySourceType: string,
+): Promise<void> {
+  const lineSecret = await getFreshLineSecret()
+  if (!isExpenseQueryAllowed(lineSecret, lineReplyToId, lineReplySourceType)) {
+    await lineClient.replyText(lineEvent.replyToken!, expenseQueryDeniedMessage(lineReplySourceType))
+    return
+  }
+
+  const text = lineEvent.message?.text?.trim()
+  if (!text) {
+    await lineClient.replyText(lineEvent.replyToken!, '今月の自分の合計、全体合計、ユーザー別合計に答えられます。')
+    return
+  }
+
+  try {
+    const message: ExpenseQueryMessage = {
+      task: 'expense_query',
+      lineUserId,
+      lineDisplayName,
+      lineMessageId,
+      text,
+    }
+    const result = await agentCoreClient.invokeExpenseQueryAgent(message)
+    await lineClient.replyText(lineEvent.replyToken!, result.replyMessage)
+  } catch (error) {
+    logger.error('Failed to answer expense query', {
+      lineMessageId,
+      lineUserId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    await lineClient.replyText(lineEvent.replyToken!, '集計に失敗しました。時間をおいてもう一度試してください。')
+  }
+}
+
+function isExpenseQueryAllowed(lineSecret: LineSecret, lineReplyToId: string, lineReplySourceType: string): boolean {
+  if (lineReplySourceType !== 'group') {
+    return false
+  }
+  if (!Array.isArray(lineSecret.allowedExpenseQuerySourceIds)) {
+    return false
+  }
+  return lineSecret.allowedExpenseQuerySourceIds.includes(lineReplyToId)
+}
+
+function expenseQueryDeniedMessage(lineReplySourceType: string): string {
+  if (lineReplySourceType === 'group') {
+    return 'このグループでは集計を確認できません。'
+  }
+  return 'このトークでは集計を確認できません。'
 }
 
 function publicS3ObjectUrl(bucket: string, key: string): string {
@@ -213,6 +293,10 @@ async function getLineChannelAccessToken(): Promise<string> {
 async function getLineSecret(): Promise<LineSecret> {
   cachedLineSecret ??= await getJsonSecret<LineSecret>(lineSecretArn)
   return cachedLineSecret
+}
+
+async function getFreshLineSecret(): Promise<LineSecret> {
+  return await getJsonSecret<LineSecret>(lineSecretArn)
 }
 
 function getHeader(headers: Record<string, string | undefined>, name: string): string | undefined {
