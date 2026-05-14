@@ -148,6 +148,45 @@ describe('ReceiptLineAgentStack', () => {
     })
   })
 
+  test('allows webhook to invoke AgentCore for text queries', () => {
+    const template = synthTemplate()
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      Environment: {
+        Variables: Match.objectLike({
+          AGENT_CORE_RUNTIME_ARN: {
+            'Fn::GetAtt': [Match.stringLikeRegexp('ReceiptAgentRuntime'), 'AgentRuntimeArn'],
+          },
+        }),
+      },
+    })
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: Match.objectLike({
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'bedrock-agentcore:InvokeAgentRuntime',
+            Effect: 'Allow',
+            Resource: Match.arrayWith([
+              {
+                'Fn::GetAtt': [Match.stringLikeRegexp('ReceiptAgentRuntime'), 'AgentRuntimeArn'],
+              },
+              {
+                'Fn::Join': [
+                  '',
+                  [
+                    {
+                      'Fn::GetAtt': [Match.stringLikeRegexp('ReceiptAgentRuntime'), 'AgentRuntimeArn'],
+                    },
+                    '/runtime-endpoint/*',
+                  ],
+                ],
+              },
+            ]),
+          }),
+        ]),
+      }),
+    })
+  })
+
   test('scopes Bedrock model invocation to configured inference profile', () => {
     const template = synthTemplate()
     template.hasResourceProperties('AWS::IAM::Policy', {

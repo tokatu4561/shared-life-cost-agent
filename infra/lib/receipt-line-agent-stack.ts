@@ -35,7 +35,7 @@ export class ReceiptLineAgentStack extends cdk.Stack {
       'LineSecret',
       props.secretNames?.line,
       `${secretPrefix}/line`,
-      'LINE Messaging API settings as JSON: channelSecret, channelAccessToken, optional channelId.',
+      'LINE Messaging API settings as JSON: channelSecret, channelAccessToken, optional channelId and allowedExpenseQuerySourceIds.',
     )
 
     const googleSecret = this.resolveSecret(
@@ -168,6 +168,7 @@ export class ReceiptLineAgentStack extends cdk.Stack {
         RECEIPT_IMAGE_BUCKET: receiptImagesBucket.bucketName,
         RECEIPT_EVENTS_TABLE: receiptEventsTable.tableName,
         RECEIPT_PROCESSING_QUEUE_URL: processingQueue.queueUrl,
+        AGENT_CORE_RUNTIME_ARN: agentRuntime.agentRuntimeArn,
       },
     })
 
@@ -188,6 +189,15 @@ export class ReceiptLineAgentStack extends cdk.Stack {
     receiptImagesBucket.grantWrite(webhookFunction)
     receiptEventsTable.grantReadWriteData(webhookFunction)
     processingQueue.grantSendMessages(webhookFunction)
+    webhookFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['bedrock-agentcore:InvokeAgentRuntime'],
+        resources: [
+          agentRuntime.agentRuntimeArn,
+          `${agentRuntime.agentRuntimeArn}/runtime-endpoint/*`,
+        ],
+      }),
+    )
 
     lineSecret.grantRead(workerFunction)
     receiptEventsTable.grantReadWriteData(workerFunction)

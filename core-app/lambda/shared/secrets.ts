@@ -4,6 +4,7 @@ export interface LineSecret {
   channelSecret: string
   channelAccessToken: string
   channelId?: string
+  allowedExpenseQuerySourceIds?: string[]
 }
 
 const secretsClient = new SecretsManagerClient({})
