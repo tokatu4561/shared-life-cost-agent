@@ -17,6 +17,25 @@ export class LineClient {
     return { displayName: profile.displayName ?? '' }
   }
 
+  async getGroupMemberProfile(groupId: string, userId: string): Promise<{ displayName: string }> {
+    const response = await fetch(
+      `https://api.line.me/v2/bot/group/${encodeURIComponent(groupId)}/member/${encodeURIComponent(userId)}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${this.channelAccessToken}`,
+        },
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch LINE group member profile: ${response.status}`)
+    }
+
+    const profile = (await response.json()) as { displayName?: string }
+    return { displayName: profile.displayName ?? '' }
+  }
+
   async replyText(replyToken: string, text: string): Promise<void> {
     await this.postJson('https://api.line.me/v2/bot/message/reply', {
       replyToken,
