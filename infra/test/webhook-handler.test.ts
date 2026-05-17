@@ -2,6 +2,9 @@ import { createHmac } from 'node:crypto'
 import type { APIGatewayProxyEventV2 } from 'aws-lambda'
 
 const mockInvokeExpenseQueryAgent = jest.fn()
+const mockDynamoSend = jest.fn()
+const mockS3Send = jest.fn()
+const mockSqsSend = jest.fn()
 const mockLineSecret = {
   channelSecret: 'channel-secret',
   channelAccessToken: 'channel-token',
@@ -9,12 +12,12 @@ const mockLineSecret = {
 }
 
 jest.mock('@aws-sdk/client-s3', () => ({
-  S3Client: jest.fn(),
+  S3Client: jest.fn(() => ({ send: mockS3Send })),
   PutObjectCommand: jest.fn(),
 }))
 
 jest.mock('@aws-sdk/client-sqs', () => ({
-  SQSClient: jest.fn(),
+  SQSClient: jest.fn(() => ({ send: mockSqsSend })),
   SendMessageCommand: jest.fn(),
 }))
 
@@ -24,7 +27,7 @@ jest.mock('@aws-sdk/client-dynamodb', () => ({
 
 jest.mock('@aws-sdk/lib-dynamodb', () => ({
   DynamoDBDocumentClient: {
-    from: jest.fn(() => ({ send: jest.fn() })),
+    from: jest.fn(() => ({ send: mockDynamoSend })),
   },
   PutCommand: jest.fn(),
   UpdateCommand: jest.fn(),
@@ -57,6 +60,9 @@ describe('webhook handler', () => {
       AGENT_CORE_RUNTIME_ARN: 'agent-runtime-arn',
     }
     mockLineSecret.allowedExpenseQuerySourceIds = ['G001']
+    mockDynamoSend.mockResolvedValue({})
+    mockS3Send.mockResolvedValue({})
+    mockSqsSend.mockResolvedValue({})
   })
 
   afterEach(() => {
@@ -111,6 +117,102 @@ describe('webhook handler', () => {
       body: JSON.stringify({
         replyToken: 'reply-token',
         messages: [{ type: 'text', text: '2026-05 の全体合計は 1,500円です。' }],
+      }),
+    })
+  })
+
+  test('uses group member profile for group receipt image sender display name', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ displayName: 'ゆきほ' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+      })
+    global.fetch = fetchMock as unknown as typeof fetch
+
+    const body = JSON.stringify({
+      events: [
+        {
+          type: 'message',
+          replyToken: 'reply-token',
+          source: { type: 'group', userId: 'U001', groupId: 'G001' },
+          message: { id: 'm001', type: 'image' },
+        },
+      ],
+    })
+    const { handler } = await import('../../core-app/lambda/webhook/handler')
+    await handler(_lineEvent(body))
+    const { SendMessageCommand } = jest.requireMock('@aws-sdk/client-sqs')
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, 'https://api.line.me/v2/bot/group/G001/member/U001', {
+      method: 'GET',
+      headers: {
+        Authorization: 'Bearer channel-token',
+      },
+    })
+    expect(SendMessageCommand).toHaveBeenCalledWith({
+      QueueUrl: 'queue-url',
+      MessageBody: JSON.stringify({
+        lineUserId: 'U001',
+        lineDisplayName: 'ゆきほ',
+        lineMessageId: 'm001',
+        lineReplyToId: 'G001',
+        lineReplySourceType: 'group',
+        bucket: 'receipt-bucket',
+        key: 'receipts/U001/m001.jpg',
+        imageUrl: 'https://receipt-bucket.s3.ap-northeast-1.amazonaws.com/receipts/U001/m001.jpg',
+      }),
+    })
+  })
+
+  test('continues group receipt image processing without display name when group profile fetch fails', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+      })
+    global.fetch = fetchMock as unknown as typeof fetch
+
+    const body = JSON.stringify({
+      events: [
+        {
+          type: 'message',
+          replyToken: 'reply-token',
+          source: { type: 'group', userId: 'U001', groupId: 'G001' },
+          message: { id: 'm001', type: 'image' },
+        },
+      ],
+    })
+    const { handler } = await import('../../core-app/lambda/webhook/handler')
+    await handler(_lineEvent(body))
+    const { SendMessageCommand } = jest.requireMock('@aws-sdk/client-sqs')
+
+    expect(SendMessageCommand).toHaveBeenCalledWith({
+      QueueUrl: 'queue-url',
+      MessageBody: JSON.stringify({
+        lineUserId: 'U001',
+        lineDisplayName: '',
+        lineMessageId: 'm001',
+        lineReplyToId: 'G001',
+        lineReplySourceType: 'group',
+        bucket: 'receipt-bucket',
+        key: 'receipts/U001/m001.jpg',
+        imageUrl: 'https://receipt-bucket.s3.ap-northeast-1.amazonaws.com/receipts/U001/m001.jpg',
       }),
     })
   })

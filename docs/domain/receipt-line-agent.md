@@ -91,7 +91,7 @@ MVPでは、家族・同居者など複数人が同じLINE Botへレシート画
 - テキスト質問ではWebhookから同期的にAgent Core Runtimeを呼び出し、Reply Messageで回答すること。
 - テキスト集計質問はLINEグループからのみ受け付け、LINE Secretの `allowedExpenseQuerySourceIds` に含まれるグループIDからのみ許可すること。
 - 受付返信と読み取り結果通知は、画像を受け付けた送信元会話へ返すこと。個人チャットでは送信者、グループまたはルームでは送信元のグループまたはルームへ返すこと。
-- Webhookで取得できるMessaging APIのLINEユーザーIDと、Profile APIから取得したLINE表示名を支払者情報として扱うこと。
+- Webhookで取得できるMessaging APIのLINEユーザーIDと、LINEプロフィールAPIから取得したLINE表示名を支払者情報として扱うこと。グループからのメッセージではグループIDとユーザーIDを使い、グループメンバープロフィールAPIから表示名を取得すること。
 - LINE表示名を取得できない場合でも、LINEユーザーIDが取得できていれば受付処理を継続し、表示名は空欄で記録すること。
 
 #### レシート画像管理

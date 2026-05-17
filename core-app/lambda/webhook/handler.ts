@@ -67,7 +67,7 @@ async function handleLineEvent(lineEvent: LineWebhookEvent, lineClient: LineClie
   }
 
   const createdAt = new Date().toISOString()
-  const lineDisplayName = await getLineDisplayName(lineClient, lineUserId, lineMessageId)
+  const lineDisplayName = await getLineDisplayName(lineClient, lineEvent.source, lineUserId, lineMessageId)
 
   if (lineEvent.message.type === 'text') {
     await handleTextMessage(
@@ -209,11 +209,14 @@ function publicS3ObjectUrl(bucket: string, key: string): string {
 
 async function getLineDisplayName(
   lineClient: LineClient,
+  source: LineWebhookEvent['source'],
   lineUserId: string,
   lineMessageId: string,
 ): Promise<string> {
   try {
-    const profile = await lineClient.getProfile(lineUserId)
+    const profile = source?.type === 'group' && source.groupId
+      ? await lineClient.getGroupMemberProfile(source.groupId, lineUserId)
+      : await lineClient.getProfile(lineUserId)
     return profile.displayName
   } catch (error) {
     logger.warn('Failed to fetch LINE profile; continuing without display name', {
