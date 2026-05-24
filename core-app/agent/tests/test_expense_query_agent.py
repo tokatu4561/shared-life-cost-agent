@@ -38,91 +38,22 @@ with patch.dict(
     },
 ):
     from src import expense_query_agent
-    from src.expense_query_agent import ExpenseQueryPlan, ExpenseQueryRequest, ExpenseRow, ExpenseTable
+    from src.expense_query_agent import ExpenseQueryPlan, ExpenseQueryRequest, ExpenseTable
 
 
 class ExpenseQueryAgentTest(unittest.TestCase):
-    def test_classifies_supported_intent(self) -> None:
-        response_body = {"content": [{"text": '{"intent":"by_user_total"}'}]}
-        bedrock_runtime = MagicMock()
-        bedrock_runtime.invoke_model.return_value = {"body": BytesIO(json.dumps(response_body).encode("utf-8"))}
-
-        with patch.object(expense_query_agent.boto3, "client", return_value=bedrock_runtime):
-            self.assertEqual(expense_query_agent.classify_expense_query("ユーザーごとの金額は？"), "by_user_total")
-
-    def test_classifies_unknown_intent_as_unsupported(self) -> None:
-        response_body = {"content": [{"text": '{"intent":"store_total"}'}]}
-        bedrock_runtime = MagicMock()
-        bedrock_runtime.invoke_model.return_value = {"body": BytesIO(json.dumps(response_body).encode("utf-8"))}
-
-        with patch.object(expense_query_agent.boto3, "client", return_value=bedrock_runtime):
-            self.assertEqual(expense_query_agent.classify_expense_query("店舗別で出して"), "unsupported")
-
-    def test_parses_expense_rows_and_ignores_invalid_totals(self) -> None:
-        values = [
-            ["登録日時", "レシート日付", "LINE表示名", "LINEユーザーID", "店舗名", "カテゴリ", "合計金額"],
-            ["", "", "太郎", "'U001", "", "", "1,200"],
-            ["", "", "花子", "U002", "", "", "abc"],
-            ["", "", "花子", "U002", "", "", "300円"],
-            ["", "", "名無し", "", "", "", "999"],
-        ]
-
-        self.assertEqual(
-            expense_query_agent.parse_expense_rows(values),
-            [
-                ExpenseRow(line_display_name="太郎", line_user_id="U001", total=1200),
-                ExpenseRow(line_display_name="花子", line_user_id="U002", total=300),
-            ],
-        )
-
-    def test_builds_overall_total_reply(self) -> None:
-        reply = expense_query_agent.build_expense_query_reply(
-            "overall_total",
-            [
-                ExpenseRow("太郎", "U001", 1200),
-                ExpenseRow("花子", "U002", 300),
-            ],
-            ExpenseQueryRequest("U001", "太郎", "m1", "今月全部でいくら？"),
-            datetime(2026, 5, 13, tzinfo=timezone.utc),
-        )
-
-        self.assertEqual(reply, "2026-05 の全体合計は 1,500円です。")
-
-    def test_builds_self_total_reply(self) -> None:
-        reply = expense_query_agent.build_expense_query_reply(
-            "self_total",
-            [
-                ExpenseRow("太郎", "U001", 1200),
-                ExpenseRow("花子", "U002", 300),
-            ],
-            ExpenseQueryRequest("U001", "太郎", "m1", "自分はいくら？"),
-            datetime(2026, 5, 13, tzinfo=timezone.utc),
-        )
-
-        self.assertEqual(reply, "2026-05 の太郎さんの合計は 1,200円です。")
-
-    def test_builds_by_user_total_reply(self) -> None:
-        reply = expense_query_agent.build_expense_query_reply(
-            "by_user_total",
-            [
-                ExpenseRow("太郎", "U001", 1200),
-                ExpenseRow("花子", "U002", 300),
-                ExpenseRow("", "U002", 400),
-            ],
-            ExpenseQueryRequest("U001", "太郎", "m1", "ユーザーごとは？"),
-            datetime(2026, 5, 13, tzinfo=timezone.utc),
-        )
-
-        self.assertEqual(reply, "2026-05 のユーザー別合計です。\n太郎: 1,200円\n花子: 700円")
-
-    def test_missing_month_sheet_returns_empty_rows(self) -> None:
+    def test_missing_month_sheet_returns_empty_table(self) -> None:
         service = _fake_sheets_service(FakeHttpError(400))
         with (
             patch.object(expense_query_agent, "get_google_secret", return_value={}),
             patch.object(expense_query_agent, "spreadsheet_id", return_value="spreadsheet-id"),
             patch.object(expense_query_agent, "_build_sheets_service", return_value=service),
         ):
-            self.assertEqual(expense_query_agent.fetch_current_month_expenses(), [])
+            table = expense_query_agent.fetch_current_month_expense_table(datetime(2026, 5, 13, tzinfo=timezone.utc))
+
+        self.assertEqual(table.sheet_name, "2026-05")
+        self.assertEqual(table.headers, expense_query_agent.STANDARD_HEADERS)
+        self.assertEqual(table.rows, [])
 
     def test_empty_sheet_still_rejects_unsupported_query(self) -> None:
         with (
@@ -344,20 +275,6 @@ class ExpenseQueryAgentTest(unittest.TestCase):
                 group_by=[],
                 display_columns=[],
                 filters=[{"column": "店舗名", "operator": "contains_normalized", "value": "ニトリ"}],
-                sort=[],
-            ),
-        )
-
-    def test_parses_legacy_self_intent_as_safe_query_plan(self) -> None:
-        plan = expense_query_agent._parse_query_plan({"intent": "self_total"})
-
-        self.assertEqual(
-            plan,
-            ExpenseQueryPlan(
-                metric={"type": "sum", "column": "合計金額"},
-                group_by=[],
-                display_columns=[],
-                filters=[{"column": "LINEユーザーID", "operator": "equals", "valueFrom": "lineUserId"}],
                 sort=[],
             ),
         )

@@ -7,20 +7,17 @@ import logging
 import os
 import re
 import unicodedata
-from typing import Literal
 
 import boto3
 from googleapiclient.errors import HttpError
 
 from .config import MissingConfigurationError, SheetsError, aws_region
-from .expense_query_prompts import build_classification_prompt, build_query_plan_prompt
+from .expense_query_prompts import build_query_plan_prompt
 from .google_secret import SHEETS_SCOPES, get_google_secret, service_account_credentials, spreadsheet_id
 from .sheets_tool import _build_sheets_service
 
 JST = timezone(timedelta(hours=9))
-ExpenseQueryIntent = Literal["self_total", "overall_total", "by_user_total", "unsupported"]
 
-ALLOWED_INTENTS: set[str] = {"self_total", "overall_total", "by_user_total", "unsupported"}
 ALLOWED_METRIC_TYPES: set[str] = {"sum"}
 ALLOWED_VALUE_FROM: set[str] = {"lineUserId"}
 NUMERIC_COLUMNS: set[str] = {"合計金額"}
@@ -37,13 +34,6 @@ class ExpenseQueryRequest:
     line_display_name: str
     line_message_id: str
     text: str
-
-
-@dataclass(frozen=True)
-class ExpenseRow:
-    line_display_name: str
-    line_user_id: str
-    total: int
 
 
 @dataclass(frozen=True)
@@ -185,43 +175,6 @@ def build_expense_query_plan(text: str, table: ExpenseTable, request: ExpenseQue
         raise
 
 
-def classify_expense_query(text: str) -> ExpenseQueryIntent:
-    region = aws_region()
-    bedrock_runtime = boto3.client(
-        "bedrock-runtime",
-        region_name=region,
-        endpoint_url=f"https://bedrock-runtime.{region}.amazonaws.com",
-    )
-    body = {
-        "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 128,
-        "temperature": 0,
-        "messages": [
-            {
-                "role": "user",
-                "content": [{"type": "text", "text": build_classification_prompt(text)}],
-            }
-        ],
-    }
-
-    response = bedrock_runtime.invoke_model(
-        modelId=_resolve_model_id(),
-        body=json.dumps(body).encode("utf-8"),
-        contentType="application/json",
-        accept="application/json",
-    )
-    response_body = json.loads(response["body"].read())
-    parsed = _parse_json(response_body["content"][0]["text"])
-    intent = str(parsed.get("intent") or "").strip()
-    if intent not in ALLOWED_INTENTS:
-        return "unsupported"
-    return intent  # type: ignore[return-value]
-
-
-def fetch_current_month_expenses(now: datetime | None = None) -> list[ExpenseRow]:
-    return parse_expense_rows(fetch_current_month_expense_table(now).to_values())
-
-
 def fetch_current_month_expense_table(now: datetime | None = None) -> ExpenseTable:
     google_secret = get_google_secret()
     target_spreadsheet_id = spreadsheet_id(google_secret)
@@ -262,37 +215,6 @@ def parse_expense_table(values: list[list[object]], sheet_name: str) -> ExpenseT
         if any(row.values()):
             rows.append(row)
     return ExpenseTable(sheet_name=sheet_name, headers=headers, rows=rows)
-
-
-def parse_expense_rows(values: list[list[object]]) -> list[ExpenseRow]:
-    if values:
-        table = parse_expense_table(values, "")
-        if {"LINE表示名", "LINEユーザーID", "合計金額"}.issubset(set(table.headers)):
-            return [
-                ExpenseRow(
-                    line_display_name=row.get("LINE表示名", ""),
-                    line_user_id=row["LINEユーザーID"],
-                    total=total,
-                )
-                for row in table.rows
-                if row.get("LINEユーザーID") and (total := _parse_total(row.get("合計金額", ""))) is not None
-            ]
-
-    rows: list[ExpenseRow] = []
-    for row in values[1:]:
-        line_user_id = _cell(row, 3)
-        total = _parse_total(_cell(row, 6))
-        if not line_user_id or total is None:
-            continue
-
-        rows.append(
-            ExpenseRow(
-                line_display_name=_cell(row, 2),
-                line_user_id=line_user_id,
-                total=total,
-            )
-        )
-    return rows
 
 
 def execute_expense_query_plan(
@@ -399,41 +321,6 @@ def build_aggregation_reply(result: AggregationResult, request: ExpenseQueryRequ
     for group in result.groups:
         lines.append(f"{group.label}: {group.value:,}円")
     return "\n".join(lines)
-
-
-def build_expense_query_reply(
-    intent: ExpenseQueryIntent,
-    rows: list[ExpenseRow],
-    request: ExpenseQueryRequest,
-    now: datetime,
-) -> str:
-    month = _current_month_sheet_name(now)
-    if not rows:
-        return f"{month} の登録はまだありません。"
-
-    if intent == "self_total":
-        total = sum(row.total for row in rows if row.line_user_id == request.line_user_id)
-        name = request.line_display_name or "あなた"
-        return f"{month} の{name}さんの合計は {total:,}円です。"
-
-    if intent == "overall_total":
-        total = sum(row.total for row in rows)
-        return f"{month} の全体合計は {total:,}円です。"
-
-    if intent == "by_user_total":
-        totals: dict[str, int] = {}
-        names: dict[str, str] = {}
-        for row in rows:
-            totals[row.line_user_id] = totals.get(row.line_user_id, 0) + row.total
-            if row.line_display_name:
-                names[row.line_user_id] = row.line_display_name
-
-        lines = [f"{month} のユーザー別合計です。"]
-        for line_user_id, total in sorted(totals.items(), key=lambda item: (-item[1], _display_name(item[0], names))):
-            lines.append(f"{_display_name(line_user_id, names)}: {total:,}円")
-        return "\n".join(lines)
-
-    return "今月の自分の合計、全体合計、ユーザー別合計に答えられます。"
 
 
 def _parse_request(payload: dict) -> ExpenseQueryRequest:
@@ -601,9 +488,6 @@ def _parse_json(text: str) -> dict:
 def _parse_query_plan(parsed: dict) -> ExpenseQueryPlan:
     if parsed.get("unsupported") is True:
         raise UnsupportedExpenseQueryError("unsupported query")
-    legacy_plan = _parse_legacy_intent_query_plan(parsed)
-    if legacy_plan is not None:
-        return legacy_plan
     target_month = parsed.get("targetMonth")
     if target_month is not None and target_month != "current":
         raise UnsupportedExpenseQueryError("target month is not supported")
@@ -617,33 +501,6 @@ def _parse_query_plan(parsed: dict) -> ExpenseQueryPlan:
         filters=_normalize_query_filters(_required_dict_list(parsed, "filters")),
         sort=_required_dict_list(parsed, "sort"),
     )
-
-
-def _parse_legacy_intent_query_plan(parsed: dict) -> ExpenseQueryPlan | None:
-    intent = str(parsed.get("intent") or "").strip()
-    if not intent:
-        return None
-    if intent == "unsupported":
-        raise UnsupportedExpenseQueryError("unsupported legacy intent")
-    if intent == "self_total":
-        return _self_total_plan()
-    if intent == "overall_total":
-        return ExpenseQueryPlan(
-            metric={"type": "sum", "column": "合計金額"},
-            group_by=[],
-            display_columns=[],
-            filters=[],
-            sort=[],
-        )
-    if intent == "by_user_total":
-        return ExpenseQueryPlan(
-            metric={"type": "sum", "column": "合計金額"},
-            group_by=["LINEユーザーID"],
-            display_columns=["LINE表示名"],
-            filters=[],
-            sort=[{"by": "metric", "direction": "desc"}],
-        )
-    raise UnsupportedExpenseQueryError("unknown legacy intent")
 
 
 def _normalize_query_filters(filters: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -790,10 +647,6 @@ def _matched_labels_suffix(group: AggregationGroup) -> str:
 
 def _unsupported_reply() -> str:
     return "今月の自分の合計、全体合計、ユーザー別合計、カテゴリ別合計、店舗別合計、店舗名検索に答えられます。"
-
-
-def _display_name(line_user_id: str, names: dict[str, str]) -> str:
-    return names.get(line_user_id) or _short_user_id(line_user_id)
 
 
 def _short_user_id(line_user_id: str) -> str:

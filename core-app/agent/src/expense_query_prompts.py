@@ -19,16 +19,3 @@ def build_query_plan_prompt(text: str, sheet_name: str, headers: list[str]) -> s
         f"列定義: {json.dumps(headers, ensure_ascii=False)}\n"
         f"質問:\n{text}"
     )
-
-
-def build_classification_prompt(text: str) -> str:
-    return (
-        "あなたはLINE家計精算Agentの質問分類器です。\n"
-        "ユーザーの質問を次のintentのどれか1つに分類し、JSONだけを返してください。\n"
-        "- self_total: 今月の質問者本人の合計金額を尋ねている\n"
-        "- overall_total: 今月の全体合計金額を尋ねている\n"
-        "- by_user_total: 今月のユーザー別・人別の合計金額を尋ねている\n"
-        "- unsupported: 上記以外、月指定、店舗別、カテゴリ別、修正依頼など\n"
-        "形式: {\"intent\":\"self_total|overall_total|by_user_total|unsupported\"}\n\n"
-        f"質問:\n{text}"
-    )
