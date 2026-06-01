@@ -57,7 +57,7 @@ def append_receipt(receipt: NormalizedReceipt, registered_at: datetime) -> dict:
             .append(
                 spreadsheetId=target_spreadsheet_id,
                 range=f"'{sheet_name}'!A:{LINE_MESSAGE_ID_COLUMN}",
-                valueInputOption="RAW",
+                valueInputOption="USER_ENTERED",
                 insertDataOption="INSERT_ROWS",
                 body={"values": [row]},
             )
