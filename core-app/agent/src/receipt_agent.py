@@ -45,7 +45,11 @@ def process_receipt(payload: dict) -> dict:
         return {
             "success": True,
             "status": "registered",
-            "replyMessage": _success_message(receipt, already_registered=not registered),
+            "replyMessage": _success_message(
+                receipt,
+                already_registered=not registered,
+                receipt_date_month_mismatched=sheet_result.get("receiptDateMonthMismatched") is True,
+            ),
             "receipt": _receipt_to_response(receipt),
             "sheet": sheet_result,
         }
@@ -69,7 +73,11 @@ def _parse_request(payload: dict) -> ReceiptRequest:
     )
 
 
-def _success_message(receipt: NormalizedReceipt, already_registered: bool = False) -> str:
+def _success_message(
+    receipt: NormalizedReceipt,
+    already_registered: bool = False,
+    receipt_date_month_mismatched: bool = False,
+) -> str:
     lines = [
         "登録済みです。" if already_registered else "登録しました。",
         f"店舗：{receipt.store}",
@@ -78,6 +86,11 @@ def _success_message(receipt: NormalizedReceipt, already_registered: bool = Fals
     ]
     if receipt.receipt_date:
         lines.insert(1, f"日付：{receipt.receipt_date}")
+    if receipt_date_month_mismatched:
+        lines.append(
+            "読み取った日付が今月ではありません。今月分として登録しましたが、"
+            "今月のレシートではない可能性があります。必要に応じてスプレッドシートで確認してください。"
+        )
     return "\n".join(lines)
 
 

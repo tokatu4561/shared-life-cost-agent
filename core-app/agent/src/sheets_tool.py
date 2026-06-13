@@ -29,6 +29,7 @@ def append_receipt(receipt: NormalizedReceipt, registered_at: datetime) -> dict:
 
     service = _build_sheets_service(google_secret)
     sheet_name = _resolve_sheet_name(receipt.receipt_date, registered_at)
+    receipt_date_month_mismatched = _receipt_date_month_mismatched(receipt.receipt_date, registered_at)
 
     try:
         existing_receipt = _find_existing_receipt(service, target_spreadsheet_id, receipt.line_message_id)
@@ -37,6 +38,7 @@ def append_receipt(receipt: NormalizedReceipt, registered_at: datetime) -> dict:
                 "sheetName": existing_receipt["sheetName"],
                 "updatedRange": existing_receipt["updatedRange"],
                 "alreadyRegistered": True,
+                "receiptDateMonthMismatched": False,
             }
 
         _ensure_monthly_sheet(service, target_spreadsheet_id, sheet_name)
@@ -70,6 +72,7 @@ def append_receipt(receipt: NormalizedReceipt, registered_at: datetime) -> dict:
         "sheetName": sheet_name,
         "updatedRange": result.get("updates", {}).get("updatedRange", ""),
         "alreadyRegistered": False,
+        "receiptDateMonthMismatched": receipt_date_month_mismatched,
     }
 
 
@@ -79,9 +82,15 @@ def _build_sheets_service(google_secret: dict):
 
 
 def _resolve_sheet_name(receipt_date: str | None, registered_at: datetime) -> str:
-    if receipt_date:
+    if receipt_date and not _receipt_date_month_mismatched(receipt_date, registered_at):
         return receipt_date[:7]
     return registered_at.strftime("%Y-%m")
+
+
+def _receipt_date_month_mismatched(receipt_date: str | None, registered_at: datetime) -> bool:
+    if not receipt_date:
+        return False
+    return receipt_date[:7] != registered_at.strftime("%Y-%m")
 
 
 def _safe_sheet_text(value: str) -> str:
